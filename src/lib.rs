@@ -9,7 +9,7 @@ mod global;
 mod orders;
 mod validation;
 
-use common::{OrderInputParams, FeeConfig, FeeConfigEnum, DealConfig};
+use common::{OrderInputParams, FeeConfig, FeeConfigEnum, DealConfig, OrderType};
 
 #[multiversx_sc::contract]
 pub trait Pair:
@@ -26,9 +26,10 @@ pub trait Pair:
     }
 
     #[payable("*")]
-    #[endpoint(createBuyLimitOrder)]
+    #[endpoint(createBuyOrder)]
     fn create_buy_order_endpoint(&self, amount: BigUint ) {
         let provider = self.provider_lp().get();
+        let copy_amount = amount.clone();
 
         let fee_config = FeeConfig{
             fee_type: FeeConfigEnum::Percent,
@@ -44,41 +45,23 @@ pub trait Pair:
         };
 
         self.require_global_op_not_ongoing();
-        self.require_valid_order_input_params(&order_input);
+        // self.require_valid_order_input_params(&order_input);
         let payment = self.require_valid_buy_payment();
 
-        self.create_order(payment, order_input, common::OrderType::Buy);
+        if copy_amount != BigUint::from(0u64){
+            self.create_order(payment, order_input, common::OrderType::BuyLimit);
+        }
+        else{
+            self.create_order(payment, order_input, common::OrderType::BuyMarket);
+        }
+
     }
 
     #[payable("*")]
-    #[endpoint(createBuyMarketOrder)]
-    fn create_buy_market_order_endpoint(&self, amount:BigUint ) {
-        let provider = self.provider_lp().get();
-
-        let fee_config = FeeConfig{
-            fee_type: FeeConfigEnum::Percent,
-            fixed_fee: BigUint::from(0u64),
-            percent_fee: 1_000
-        };
-
-        let order_input = OrderInputParams{
-            amount,
-            match_provider: provider,
-            fee_config,
-            deal_config: DealConfig { match_provider_percent: 1_000 }
-        };
-        self.require_global_op_not_ongoing();
-        self.require_valid_order_input_params(&order_input);
-        let payment = self.require_valid_buy_payment();
-
-        self.create_order(payment, order_input, common::OrderType::Buy);
-    }
-
-    #[payable("*")]
-    #[endpoint(createSellMarketOrder)]
+    #[endpoint(createSellOrder)]
     fn create_sell_market_order_endpoint(&self, amount:BigUint ) {
         let provider = self.provider_lp().get();
-
+        let copy_amount = amount.clone();
         let fee_config = FeeConfig{
             fee_type: FeeConfigEnum::Percent,
             fixed_fee: BigUint::from(0u64),
@@ -92,38 +75,44 @@ pub trait Pair:
             deal_config: DealConfig { match_provider_percent: 1_000 }
         };
         self.require_global_op_not_ongoing();
-        self.require_valid_order_input_params(&order_input);
+        // self.require_valid_order_input_params(&order_input);
         let payment = self.require_valid_sell_payment();
 
-        self.create_order(payment, order_input, common::OrderType::Sell);
+        if copy_amount != BigUint::from(0u64){
+            self.create_order(payment, order_input, common::OrderType::SellLimit);
+        }
+        else{
+            self.create_order(payment, order_input, common::OrderType::SellMarket);
+        }
+
     }
 
-    #[payable("*")]
-    #[endpoint(createSellLimitOrder)]
-    fn create_sell_order_endpoint(&self, amount:BigUint ) {
-        let provider = self.provider_lp().get();
+    // #[payable("*")]
+    // #[endpoint(createSellLimitOrder)]
+    // fn create_sell_order_endpoint(&self, amount:BigUint ) {
+    //     let provider = self.provider_lp().get();
 
-        let fee_config = FeeConfig{
-            fee_type: FeeConfigEnum::Percent,
-            fixed_fee: BigUint::from(0u64),
-            percent_fee: 1_000
-        };
+    //     let fee_config = FeeConfig{
+    //         fee_type: FeeConfigEnum::Percent,
+    //         fixed_fee: BigUint::from(0u64),
+    //         percent_fee: 1_000
+    //     };
 
-        let order_input = OrderInputParams{
-            amount,
-            match_provider: provider,
-            fee_config,
-            deal_config: DealConfig { match_provider_percent: 1_000 }
-        };
-        self.require_global_op_not_ongoing();
-        self.require_valid_order_input_params(&order_input);
-        let payment = self.require_valid_sell_payment();
+    //     let order_input = OrderInputParams{
+    //         amount,
+    //         match_provider: provider,
+    //         fee_config,
+    //         deal_config: DealConfig { match_provider_percent: 1_000 }
+    //     };
+    //     self.require_global_op_not_ongoing();
+    //     self.require_valid_order_input_params(&order_input);
+    //     let payment = self.require_valid_sell_payment();
 
-        self.create_order(payment, order_input, common::OrderType::Sell);
-    }
+    //     self.create_order(payment, order_input, common::OrderType::Sell);
+    // }
 
     #[endpoint(matchOrders)]
-    fn match_orders_endpoint(&self, order_vec:MultiValueEncoded<u64>) {
+    fn match_orders_endpoint(&self, order_type: common::OrderType ,order_vec:MultiValueEncoded<u64>) {
         // order_vec:MultiValueEncoded<ManagedVec<u64>>
         let mut order_ids: ManagedVec<u64> = ManagedVec::new();
         
@@ -133,7 +122,14 @@ pub trait Pair:
         self.require_global_op_not_ongoing();
         self.require_valid_match_input_order_ids(&order_ids);
 
-        self.match_orders(order_ids);
+        if order_type == OrderType::BuyMarket{
+            self.match_orders_market_buy(order_ids);
+        }
+        else if order_type == OrderType::SellMarket{
+            self.match_orders_market_sell(order_ids);
+        }
+
+        // self.match_orders(order_ids);
     }
 
     #[endpoint(matchOrdersInstantBuy)]

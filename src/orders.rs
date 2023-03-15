@@ -172,8 +172,10 @@ pub trait OrdersModule:
         let order = self.orders(order_id).get();
 
         let token_id = match &order.order_type {
-            OrderType::Buy => second_token_id.clone(),
-            OrderType::Sell => first_token_id.clone(),
+            OrderType::BuyLimit => second_token_id.clone(),
+            OrderType::SellLimit => first_token_id.clone(),
+            OrderType::BuyMarket => second_token_id.clone(),
+            OrderType::SellMarket => first_token_id.clone(),
         };
 
         let penalty_count = (epoch - order.create_epoch) / FEE_PENALTY_INCREASE_EPOCHS;
@@ -225,9 +227,10 @@ pub trait OrdersModule:
         let order = self.orders(order_id).get();
 
         let token_id = match &order.order_type {
-            OrderType::Buy => second_token_id.clone(),
-            OrderType::Sell => first_token_id.clone(),
-        };
+            OrderType::BuyLimit => second_token_id.clone(),
+            OrderType::SellLimit => first_token_id.clone(),
+            OrderType::BuyMarket => second_token_id.clone(),
+            OrderType::SellMarket => first_token_id.clone(),        };
 
         let penalty_count = (epoch - order.create_epoch) / FEE_PENALTY_INCREASE_EPOCHS;
         let penalty_percent = penalty_count * FEE_PENALTY_INCREASE_PERCENT;
@@ -270,8 +273,8 @@ pub trait OrdersModule:
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();
 
-        let buy_orders = self.get_orders_with_type(orders, OrderType::Buy);
-        let sell_orders = self.get_orders_with_type(orders, OrderType::Sell);
+        let buy_orders = self.get_orders_with_type(orders, OrderType::BuyLimit);
+        let sell_orders = self.get_orders_with_type(orders, OrderType::SellLimit);
 
         let (second_token_paid, first_token_requested) = self.get_orders_sum_up(&buy_orders);
         let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);
@@ -311,8 +314,8 @@ pub trait OrdersModule:
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();
 
-        let buy_orders = self.get_orders_with_type(orders, OrderType::Buy);
-        let sell_orders = self.get_orders_with_type(orders, OrderType::Sell);
+        let buy_orders = self.get_orders_with_type(orders, OrderType::BuyMarket);
+        let sell_orders = self.get_orders_with_type(orders, OrderType::SellLimit);
 
         let (second_token_paid, first_token_requested) = self.get_orders_sum_up(&buy_orders);
         let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);
@@ -451,8 +454,8 @@ pub trait OrdersModule:
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();
 
-        let buy_orders = self.get_orders_with_type(orders, OrderType::Buy);
-        let sell_orders = self.get_orders_with_type(orders, OrderType::Sell);
+        let buy_orders = self.get_orders_with_type(orders, OrderType::BuyLimit);
+        let sell_orders = self.get_orders_with_type(orders, OrderType::SellMarket);
 
         let (second_token_paid, first_token_requested) = self.get_orders_sum_up(&buy_orders);
         let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);

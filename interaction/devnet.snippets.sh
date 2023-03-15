@@ -168,9 +168,9 @@ matchOrders() {
 # Arguments: 
     ARG_0=1
     mxpy --verbose contract call ${ADDRESS} --recall-nonce --pem=${OWNER} --gas-limit=10000000 \
-        --function="matchOrdersInstantSell" \
+        --function="matchOrders" \
         --proxy=${PROXY} --chain=D \
-        --arguments 100 102 103 104 \
+        --arguments 3 123 124 125 126 \
         --send
 
 }
@@ -330,7 +330,7 @@ createBuyLimitOrder1(){
     VALUE_SEND=6500000 #USDC 
 
     user_address="$(mxpy wallet pem-address $OWNER)"
-    method_name=str:createBuyLimitOrder
+    method_name=str:createBuyOrder
     destination_address=$ADDRESS
     mxpy --verbose contract call $ADDRESS --recall-nonce \
         --pem=${OWNER} \
@@ -349,7 +349,7 @@ createBuyLimitOrder2(){
     VALUE_SEND=18000000 #USDC 
 
     user_address="$(mxpy wallet pem-address $OWNER)"
-    method_name=str:createBuyLimitOrder
+    method_name=str:createBuyOrder
     destination_address=$ADDRESS
     mxpy --verbose contract call $ADDRESS --recall-nonce \
         --pem=${OWNER} \
@@ -368,7 +368,7 @@ createBuyLimitOrder3(){
     VALUE_SEND=27500000 #USDC 
 
     user_address="$(mxpy wallet pem-address $OWNER)"
-    method_name=str:createBuyLimitOrder
+    method_name=str:createBuyOrder
     destination_address=$ADDRESS
     mxpy --verbose contract call $ADDRESS --recall-nonce \
         --pem=${OWNER} \
@@ -383,11 +383,11 @@ createBuyLimitOrder3(){
 }
 
 createSellMarketOrder() {
-    VALUE_WANT=81000000 #USDC
+    VALUE_WANT=0 #USDC
     VALUE_SEND=22000000000000000000 #RIDE
 
     user_address="$(mxpy wallet pem-address $OWNER)"
-    method_name=str:createSellMarketOrder
+    method_name=str:createSellOrder
     destination_address=$ADDRESS
     mxpy --verbose contract call $ADDRESS --recall-nonce \
         --pem=${OWNER} \
