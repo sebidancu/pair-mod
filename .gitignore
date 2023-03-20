@@ -4,5 +4,7 @@
 */target/
 /test.py
 /test2.py
+/.vscode
+.vscode
 # The mxpy output
 output
