@@ -132,33 +132,33 @@ pub trait Pair:
         // self.match_orders(order_ids);
     }
 
-    #[endpoint(matchOrdersInstantBuy)]
-    fn match_orders_instant_buy(&self, order_vec:MultiValueEncoded<u64>) {
-        // order_vec:MultiValueEncoded<ManagedVec<u64>>
-        let mut order_ids: ManagedVec<u64> = ManagedVec::new();
+    // #[endpoint(matchOrdersInstantBuy)]
+    // fn match_orders_instant_buy(&self, order_vec:MultiValueEncoded<u64>) {
+    //     // order_vec:MultiValueEncoded<ManagedVec<u64>>
+    //     let mut order_ids: ManagedVec<u64> = ManagedVec::new();
         
-        for order in order_vec{
-            order_ids.push(order);
-        }
-        self.require_global_op_not_ongoing();
-        self.require_valid_match_input_order_ids(&order_ids);
+    //     for order in order_vec{
+    //         order_ids.push(order);
+    //     }
+    //     self.require_global_op_not_ongoing();
+    //     self.require_valid_match_input_order_ids(&order_ids);
 
-        self.match_orders_market_buy(order_ids);
-    }
+    //     self.match_orders_market_buy(order_ids);
+    // }
 
-    #[endpoint(matchOrdersInstantSell)]
-    fn match_orders_instant_sell(&self, order_vec:MultiValueEncoded<u64>) {
-        // order_vec:MultiValueEncoded<ManagedVec<u64>>
-        let mut order_ids: ManagedVec<u64> = ManagedVec::new();
+    // #[endpoint(matchOrdersInstantSell)]
+    // fn match_orders_instant_sell(&self, order_vec:MultiValueEncoded<u64>) {
+    //     // order_vec:MultiValueEncoded<ManagedVec<u64>>
+    //     let mut order_ids: ManagedVec<u64> = ManagedVec::new();
         
-        for order in order_vec{
-            order_ids.push(order);
-        }
-        self.require_global_op_not_ongoing();
-        self.require_valid_match_input_order_ids(&order_ids);
+    //     for order in order_vec{
+    //         order_ids.push(order);
+    //     }
+    //     self.require_global_op_not_ongoing();
+    //     self.require_valid_match_input_order_ids(&order_ids);
 
-        self.match_orders_market_sell(order_ids);
-    }
+    //     self.match_orders_market_sell(order_ids);
+    // }
 
     #[endpoint(cancelOrders)]
     fn cancel_orders_endpoint(&self, order_ids: MultiValueManagedVec<u64>) {

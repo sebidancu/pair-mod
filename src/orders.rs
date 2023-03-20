@@ -61,10 +61,6 @@ pub trait OrdersModule:
         self.require_match_provider_empty_or_caller(&orders);
 
         self.create_transfers_instant_buy(&orders);
-        //self.clear_orders(&order_ids);
-        //self.execute_transfers(transfers);
-
-        //self.emit_match_order_events(orders);
     }
 
     fn match_orders_market_sell(&self, order_ids: ManagedVec<u64>) {
@@ -321,9 +317,7 @@ pub trait OrdersModule:
         let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);
 
         // second token - fee 
-        // let buyer_fee = self.rule_of_three(second_token_paid.clone(), PERCENT_BASE_POINTS, 1000)
         let mut second_token_left = second_token_paid.clone();
-        self.flag().set(1);
 
         let mut order_ids_to_delete: ManagedVec<u64> = ManagedVec::new();
 
@@ -333,28 +327,21 @@ pub trait OrdersModule:
 
         for order in sell_orders.iter() {
             //if usdc_instant_buy >= usdc_order_want
-            self.flag().set(2);
             if second_token_left >= order.output_amount {
                 //fill order completly
                 
-                self.flag().set(3);
                 // fee calculate
                 let limit_fee_amount = self.rule_of_three(&order.output_amount, &PERCENT_BASE_POINTS.into(), &order.deal_config.match_provider_percent.into());
                 let amount_to_transfer = &order.output_amount - &limit_fee_amount;
-                // self.flag_big(match_provider_amount);
+
                 amount_fee_second_token += &limit_fee_amount;
+
                 //send second token to the seller
                 self.send().direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
 
                 //send first token to the buyer
-                //create value and send at final
+                //add value and send all at once
                 amount_receive_market_order += &order.input_amount;
-                // self.send().direct_esdt(
-                //     &buy_orders.get(0).creator,
-                //     &first_token_id,
-                //     0,
-                //     &order.input_amount,
-                // );
 
                 order_ids_to_delete.push(order.id);
 
@@ -400,13 +387,7 @@ pub trait OrdersModule:
                 let amount_to_transfer = &price_output - &limit_fee_amount;
                 self.send().direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
 
-                //send first token to buyer
-                // self.send().direct_esdt(
-                //     &buy_orders.get(0).creator,
-                //     &first_token_id,
-                //     0,
-                //     &partial_fill,
-                // );
+        
                 amount_fee_second_token += &limit_fee_amount;
                 amount_receive_market_order += &partial_fill;
 
