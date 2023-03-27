@@ -306,6 +306,20 @@ pub trait OrdersModule:
         transfers
     }
 
+    // Comment
+    // The functions is quite big, try to split it in multiple smaller functions if possible (if it's not too complicated to pass the parameters around)
+    // Also, try to limit having comments to larger chuncks of code, eg. for each large if, instead of each line of code
+    // Use _ for variables that are not used (eg. for first_token_requested -> let (second_token_paid, _))
+    // No need for second_token_left variable (use second_token_paid directly, as it is not used in any other place)
+    // You can clone the order in a mutable update_order variable, and change only what's needed (instead of cloning all those individual variables of the order)
+    // Generally speaking, don't use hardcoded values in the code like BigUint::from(10u64). In this case, second_token_left should already have the correct no of decimals(10^18)
+    // For testing purposes define a set of unit tests using the Rust Testing Framework
+
+    // At the end of the function, you send funds to buy_orders.get(0).creator, but buy_orders are not filtered by creator
+    // So, in case we have multiple orders from multiple creators, you will send all the tokens to the first one
+    // You must have a check at the SC level, as the initial endpoint is callable by anyone. 
+    // Even if you make the endpoint callable only by the owner or a trustworthy source (and you're sure the list of orders is already filtered), you should still have a check at the SC level
+    // Buttom line, SCs should not rely on any outside information without doing their own checks (unless it's mandatory - like prices from price oracles)
     fn create_transfers_instant_buy(&self, orders: &MultiValueManagedVec<Order<Self::Api>>) {
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();

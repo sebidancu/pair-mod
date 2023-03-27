@@ -19,12 +19,24 @@ pub trait Pair:
     + common::CommonModule
     + validation::ValidationModule
 {
+    // Comment
+    // I would replace the 2 fixed tokens structure with a SingleValueMapper that has the first token as a key
+    // That way you could define multiple tokens in the same contract, and not only one pair
+    // Furthermore, keep in mind that as the contract will expand, you may need multiple second tokens for a single first token
+    // Maybe use a more complex mapper, like an UnorderedSetMapper, again, with a first token as a key
     #[init]
     fn init(&self, first_token_id: TokenIdentifier, second_token_id: TokenIdentifier) {
         self.first_token_id().set_if_empty(&first_token_id);
         self.second_token_id().set_if_empty(&second_token_id);
     }
 
+    // Comment
+    // We never use hardcoded variables like this
+    // Use a constant for the percentage fee, and use BigUint::zero() for the fixed fee
+    // Replace everywhere is necessary and remove unnecesary code
+    // Also, for consistency with the DEX contracts, set the percentages to have a maximum of 10_000u64 (100.00%)
+    // Why do you need the copy_amount variable? Also, the naming should be more suggestive (try to avoid copy_amount or amount1)
+    // Clone the amount directly when you create the order_input and then use the initial amount at the end of the function
     #[payable("*")]
     #[endpoint(createBuyOrder)]
     fn create_buy_order_endpoint(&self, amount: BigUint ) {
@@ -57,6 +69,9 @@ pub trait Pair:
 
     }
 
+    // Comment
+    // Rename the endpoint as you don't create only sell_market orders here
+    // Also, apply the changes from the createBuyOrder endpoint
     #[payable("*")]
     #[endpoint(createSellOrder)]
     fn create_sell_market_order_endpoint(&self, amount:BigUint ) {
@@ -86,6 +101,9 @@ pub trait Pair:
         }
 
     }
+
+    // Comment
+    // Delete if not used
 
     // #[payable("*")]
     // #[endpoint(createSellLimitOrder)]
@@ -182,11 +200,19 @@ pub trait Pair:
         self.free_orders(order_ids);
     }
 
+    // Comment
+    // Why do you need this saved in the storage?
+    // Either way, if you modify as stated above, you will need a double key with the pair of tokens
+    // Furthermore, you can set this in the init function
+    // Also, very important, make these functions only_owner / or implement an admin mechanism
     #[endpoint(setProvider)]
     fn set_provider(&self, address:ManagedAddress){
         self.provider_lp().set(address);
     }
 
+    // Comment
+    // Remove these if you modify the structure as stated above
+    // Only owner or admin.
     #[endpoint(changeFirstToken)]
     fn change_first_token_id(&self, first_token_id: TokenIdentifier){
         self.first_token_id().set(&first_token_id);
