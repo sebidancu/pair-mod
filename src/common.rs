@@ -14,7 +14,7 @@ pub enum OrderType {
     BuyLimit,
     BuyMarket,
     SellLimit,
-    SellMarket
+    SellMarket,
 }
 
 #[derive(ManagedVecItem, Clone)]
@@ -67,7 +67,7 @@ pub struct Order<M: ManagedTypeApi> {
     pub fee_config: FeeConfig<M>,
     pub deal_config: DealConfig,
     pub create_epoch: u64,
-    pub order_type: OrderType
+    pub order_type: OrderType,
 }
 
 impl DealConfig {
@@ -95,7 +95,7 @@ pub trait CommonModule {
             fee_config: params.fee_config,
             deal_config: params.deal_config,
             create_epoch: self.blockchain().get_block_epoch(),
-            order_type
+            order_type,
         }
     }
 
@@ -130,4 +130,8 @@ pub trait CommonModule {
     #[storage_mapper("providerlp")]
     fn provider_lp(&self) -> SingleValueMapper<ManagedAddress>;
 
+    #[view(getFirstTokenIdentifier)]
+    #[storage_mapper("first_token_identifier")]
+    fn first_token_identifier(&self, key: TokenIdentifier) -> UnorderedSetMapper<TokenIdentifier>;
+    // fn my_set(&self) -> UnorderedSetMapper<Type>;
 }

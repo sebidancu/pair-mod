@@ -226,7 +226,8 @@ pub trait OrdersModule:
             OrderType::BuyLimit => second_token_id.clone(),
             OrderType::SellLimit => first_token_id.clone(),
             OrderType::BuyMarket => second_token_id.clone(),
-            OrderType::SellMarket => first_token_id.clone(),        };
+            OrderType::SellMarket => first_token_id.clone(),
+        };
 
         let penalty_count = (epoch - order.create_epoch) / FEE_PENALTY_INCREASE_EPOCHS;
         let penalty_percent = penalty_count * FEE_PENALTY_INCREASE_PERCENT;
@@ -307,19 +308,19 @@ pub trait OrdersModule:
     }
 
     // Comment
-    // The functions is quite big, try to split it in multiple smaller functions if possible (if it's not too complicated to pass the parameters around)
-    // Also, try to limit having comments to larger chuncks of code, eg. for each large if, instead of each line of code
-    // Use _ for variables that are not used (eg. for first_token_requested -> let (second_token_paid, _))
-    // No need for second_token_left variable (use second_token_paid directly, as it is not used in any other place)
-    // You can clone the order in a mutable update_order variable, and change only what's needed (instead of cloning all those individual variables of the order)
-    // Generally speaking, don't use hardcoded values in the code like BigUint::from(10u64). In this case, second_token_left should already have the correct no of decimals(10^18)
-    // For testing purposes define a set of unit tests using the Rust Testing Framework
+    // [-] The functions is quite big, try to split it in multiple smaller functions if possible (if it's not too complicated to pass the parameters around)
+    // [-] Also, try to limit having comments to larger chuncks of code, eg. for each large if, instead of each line of code
+    // [√] Use _ for variables that are not used (eg. for first_token_requested -> let (second_token_paid, _))
+    // [√] No need for second_token_left variable (use second_token_paid directly, as it is not used in any other place)
+    // [√] You can clone the order in a mutable update_order variable, and change only what's needed (instead of cloning all those individual variables of the order)
+    // [-] Generally speaking, don't use hardcoded values in the code like BigUint::from(10u64). In this case, second_token_left should already have the correct no of decimals(10^18)
+    // [-] For testing purposes define a set of unit tests using the Rust Testing Framework
 
-    // At the end of the function, you send funds to buy_orders.get(0).creator, but buy_orders are not filtered by creator
-    // So, in case we have multiple orders from multiple creators, you will send all the tokens to the first one
-    // You must have a check at the SC level, as the initial endpoint is callable by anyone. 
-    // Even if you make the endpoint callable only by the owner or a trustworthy source (and you're sure the list of orders is already filtered), you should still have a check at the SC level
-    // Buttom line, SCs should not rely on any outside information without doing their own checks (unless it's mandatory - like prices from price oracles)
+    // [ ] At the end of the function, you send funds to buy_orders.get(0).creator, but buy_orders are not filtered by creator
+    // [ ] So, in case we have multiple orders from multiple creators, you will send all the tokens to the first one
+    // [ ] You must have a check at the SC level, as the initial endpoint is callable by anyone.
+    // [ ] Even if you make the endpoint callable only by the owner or a trustworthy source (and you're sure the list of orders is already filtered), you should still have a check at the SC level
+    // [ ] Buttom line, SCs should not rely on any outside information without doing their own checks (unless it's mandatory - like prices from price oracles)
     fn create_transfers_instant_buy(&self, orders: &MultiValueManagedVec<Order<Self::Api>>) {
         let first_token_id = self.first_token_id().get();
         let second_token_id = self.second_token_id().get();
@@ -327,112 +328,117 @@ pub trait OrdersModule:
         let buy_orders = self.get_orders_with_type(orders, OrderType::BuyMarket);
         let sell_orders = self.get_orders_with_type(orders, OrderType::SellLimit);
 
-        let (second_token_paid, first_token_requested) = self.get_orders_sum_up(&buy_orders);
-        let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);
-
-        // second token - fee 
-        let mut second_token_left = second_token_paid.clone();
+        let (mut second_token_paid, _) = self.get_orders_sum_up(&buy_orders);
 
         let mut order_ids_to_delete: ManagedVec<u64> = ManagedVec::new();
 
         let mut amount_receive_market_order = BigUint::from(0u64);
         let mut amount_fee_second_token = BigUint::from(0u64);
 
-
         for order in sell_orders.iter() {
-            //if usdc_instant_buy >= usdc_order_want
-            if second_token_left >= order.output_amount {
+            if second_token_paid >= order.output_amount {
                 //fill order completly
-                
+
                 // fee calculate
-                let limit_fee_amount = self.rule_of_three(&order.output_amount, &PERCENT_BASE_POINTS.into(), &order.deal_config.match_provider_percent.into());
+                let limit_fee_amount = self.rule_of_three(
+                    &order.output_amount,
+                    &PERCENT_BASE_POINTS.into(),
+                    &order.deal_config.match_provider_percent.into(),
+                );
                 let amount_to_transfer = &order.output_amount - &limit_fee_amount;
 
                 amount_fee_second_token += &limit_fee_amount;
 
                 //send second token to the seller
-                self.send().direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
+                self.send()
+                    .direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
 
                 //send first token to the buyer
-                //add value and send all at once
                 amount_receive_market_order += &order.input_amount;
 
                 order_ids_to_delete.push(order.id);
 
                 //update the second_token_left
-                second_token_left = second_token_left - &order.output_amount;
-
-            } else if second_token_left > BigUint::from(0u64)
-                && second_token_left < order.output_amount
+                second_token_paid = second_token_paid - &order.output_amount;
+            } else if second_token_paid > BigUint::from(0u64)
+                && second_token_paid < order.output_amount
             {
                 // rule of three ------- price_per_token
-                let new_usdc = order.output_amount.clone() * BigUint::from(10u64).pow(18); //usdc 
-                let price_per_token = new_usdc / order.input_amount.clone(); //Price per token 1_350_000
-                // -----
+                let new_usdc = order.output_amount.clone() * BigUint::from(10u64).pow(18);
+                let price_per_token = new_usdc / order.input_amount.clone();
 
                 // rule of three ------- partial_fill second_token
-                let partial_fill = (second_token_left * BigUint::from(10u64).pow(18)) / &price_per_token ; //fill just 49.5 RIDE
-                // -----
+                let partial_fill =
+                    (second_token_paid * BigUint::from(10u64).pow(18)) / &price_per_token;
 
                 // rule of three ------- price_output price first_token filled
-                let price_output =self.rule_of_three(&price_per_token, &BigUint::from(10u64).pow(18), &partial_fill); //price usdc filled  &price_per_token * &partial_fill 
-                // -----
+                let price_output = self.rule_of_three(
+                    &price_per_token,
+                    &BigUint::from(10u64).pow(18),
+                    &partial_fill,
+                );
+
+                let mut update_order = order.clone();
 
                 let new_input = order.input_amount - &partial_fill;
                 let new_output = order.output_amount - &price_output;
 
-                //update the last order for partial fill
-                let update_order = Order {
-                    id: order.id,
-                    creator: order.creator.clone(),
-                    match_provider: order.match_provider,
-                    input_amount: new_input.clone(),
-                    output_amount: new_output.clone(),
-                    fee_config: order.fee_config,
-                    deal_config: order.deal_config.clone(),
-                    create_epoch: order.create_epoch,
-                    order_type: order.order_type.clone(),
-                };
+                update_order.input_amount = new_input.clone();
+                update_order.output_amount = new_output.clone();
 
                 self.orders(order.id).set(&update_order);
 
                 //pay partial second_token (usdc)
-                let limit_fee_amount = self.rule_of_three(&price_output, &PERCENT_BASE_POINTS.into(), &order.deal_config.match_provider_percent.into());
+                let limit_fee_amount = self.rule_of_three(
+                    &price_output,
+                    &PERCENT_BASE_POINTS.into(),
+                    &order.deal_config.match_provider_percent.into(),
+                );
                 let amount_to_transfer = &price_output - &limit_fee_amount;
-                self.send().direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
+                self.send()
+                    .direct_esdt(&order.creator, &second_token_id, 0, &amount_to_transfer);
 
-        
                 amount_fee_second_token += &limit_fee_amount;
                 amount_receive_market_order += &partial_fill;
 
-                second_token_left = BigUint::from(0u64);
+                second_token_paid = BigUint::from(0u64);
 
                 let epoch = self.blockchain().get_block_epoch();
-                // let order_type = &order.order_type;
                 let order_id = order.id;
                 let amount_input = new_input.clone();
                 let amount_output = new_output.clone();
                 let order_creator = order.creator.clone();
-                self.order_partial_filled(epoch, order.order_type.clone(), order_id, amount_input, amount_output, order_creator)
+                self.order_partial_filled(
+                    epoch,
+                    order.order_type.clone(),
+                    order_id,
+                    amount_input,
+                    amount_output,
+                    order_creator,
+                )
             }
         }
-        let match_provider_amount = self.rule_of_three(&amount_receive_market_order, &PERCENT_BASE_POINTS.into(), &buy_orders.get(0).deal_config.match_provider_percent.into());
+        let match_provider_amount = self.rule_of_three(
+            &amount_receive_market_order,
+            &PERCENT_BASE_POINTS.into(),
+            &buy_orders.get(0).deal_config.match_provider_percent.into(),
+        );
         let final_amount = &amount_receive_market_order - &match_provider_amount;
         self.send().direct_esdt(
-                    &buy_orders.get(0).creator,
-                    &first_token_id,
-                    0,
-                    &final_amount,
-                );
+            &buy_orders.get(0).creator,
+            &first_token_id,
+            0,
+            &final_amount,
+        );
 
         // fees first_token
         self.send().direct_esdt(
-                    &self.provider_lp().get(),
-                    &first_token_id,
-                    0,
-                    &match_provider_amount,
-                );
-        // fees second_token 
+            &self.provider_lp().get(),
+            &first_token_id,
+            0,
+            &match_provider_amount,
+        );
+        // fees second_token
         self.send().direct_esdt(
             &self.provider_lp().get(),
             &second_token_id,
@@ -440,9 +446,7 @@ pub trait OrdersModule:
             &amount_fee_second_token,
         );
         //delete all completed orders
-        //self.clear_orders(&order_ids_to_delete);
         self.clear_orders(&order_ids_to_delete);
-
     }
 
     fn create_transfers_instant_sell(&self, orders: &MultiValueManagedVec<Order<Self::Api>>) {
@@ -452,12 +456,11 @@ pub trait OrdersModule:
         let buy_orders = self.get_orders_with_type(orders, OrderType::BuyLimit);
         let sell_orders = self.get_orders_with_type(orders, OrderType::SellMarket);
 
-        let (second_token_paid, first_token_requested) = self.get_orders_sum_up(&buy_orders);
-        let (first_token_paid, second_token_requested) = self.get_orders_sum_up(&sell_orders);
+        let (first_token_paid, _) = self.get_orders_sum_up(&sell_orders);
         //first token paid -- ride
         //second token paid -- usdc
 
-        // second token - fee 
+        // second token - fee
         let mut first_token_left = first_token_paid.clone();
 
         let mut order_ids_to_delete: ManagedVec<u64> = ManagedVec::new();
@@ -469,14 +472,19 @@ pub trait OrdersModule:
             //if ride_instant_sell >= ride_order_want
             if first_token_left >= order.output_amount {
                 //fill order completly
-                
+
                 // fee calculate
-                let limit_fee_amount = self.rule_of_three(&order.output_amount, &PERCENT_BASE_POINTS.into(), &order.deal_config.match_provider_percent.into());
+                let limit_fee_amount = self.rule_of_three(
+                    &order.output_amount,
+                    &PERCENT_BASE_POINTS.into(),
+                    &order.deal_config.match_provider_percent.into(),
+                );
                 let amount_to_transfer = &order.output_amount - &limit_fee_amount;
                 // self.flag_big(match_provider_amount);
                 amount_fee_first_token += &limit_fee_amount;
                 //send second token to the seller
-                self.send().direct_esdt(&order.creator, &first_token_id, 0, &amount_to_transfer);
+                self.send()
+                    .direct_esdt(&order.creator, &first_token_id, 0, &amount_to_transfer);
 
                 //send first token to the market seller
                 //create value and send at final
@@ -486,22 +494,25 @@ pub trait OrdersModule:
 
                 //update the second_token_left
                 first_token_left = first_token_left - &order.output_amount;
-
             } else if first_token_left > BigUint::from(0u64)
                 && first_token_left < order.output_amount
             {
                 //output==ride
                 // rule of three ------- price_per_token
-                let new_usdc = order.input_amount.clone() * BigUint::from(10u64).pow(18); //usdc 
+                let new_usdc = order.input_amount.clone() * BigUint::from(10u64).pow(18); //usdc
                 let price_per_token = new_usdc / order.output_amount.clone(); //usdc/ride 1.10
-                // -----done
+                                                                              // -----done
 
                 // partial fill ride ------- partial_fill second_token
-                let partial_fill = first_token_left.clone()  ;
+                let partial_fill = first_token_left.clone();
                 // -----done
 
-                // price of partial fill in usdc ------- price usdc filled 
-                let price_output =self.rule_of_three(&price_per_token, &BigUint::from(10u64).pow(18), &partial_fill); 
+                // price of partial fill in usdc ------- price usdc filled
+                let price_output = self.rule_of_three(
+                    &price_per_token,
+                    &BigUint::from(10u64).pow(18),
+                    &partial_fill,
+                );
                 // -----
 
                 let new_input = order.input_amount - &price_output;
@@ -523,9 +534,14 @@ pub trait OrdersModule:
                 self.orders(order.id).set(&update_order);
 
                 //pay partial first token
-                let limit_fee_amount = self.rule_of_three(&partial_fill, &PERCENT_BASE_POINTS.into(), &order.deal_config.match_provider_percent.into());
+                let limit_fee_amount = self.rule_of_three(
+                    &partial_fill,
+                    &PERCENT_BASE_POINTS.into(),
+                    &order.deal_config.match_provider_percent.into(),
+                );
                 let amount_to_transfer = &partial_fill - &limit_fee_amount;
-                self.send().direct_esdt(&order.creator, &first_token_id, 0, &amount_to_transfer);
+                self.send()
+                    .direct_esdt(&order.creator, &first_token_id, 0, &amount_to_transfer);
 
                 amount_fee_first_token += &limit_fee_amount;
                 amount_receive_market_order += &price_output;
@@ -537,28 +553,38 @@ pub trait OrdersModule:
                 let amount_input = new_input.clone();
                 let amount_output = new_output.clone();
                 let order_creator = order.creator.clone();
-                self.order_partial_filled(epoch, order.order_type.clone(), order_id, amount_input, amount_output, order_creator)
-
+                self.order_partial_filled(
+                    epoch,
+                    order.order_type.clone(),
+                    order_id,
+                    amount_input,
+                    amount_output,
+                    order_creator,
+                )
             }
         }
-        let match_provider_amount = self.rule_of_three(&amount_receive_market_order, &PERCENT_BASE_POINTS.into(), &sell_orders.get(0).deal_config.match_provider_percent.into());
+        let match_provider_amount = self.rule_of_three(
+            &amount_receive_market_order,
+            &PERCENT_BASE_POINTS.into(),
+            &sell_orders.get(0).deal_config.match_provider_percent.into(),
+        );
         let final_amount = &amount_receive_market_order - &match_provider_amount;
         self.send().direct_esdt(
-                    &sell_orders.get(0).creator,
-                    &second_token_id,
-                    0,
-                    &final_amount,
-                );
+            &sell_orders.get(0).creator,
+            &second_token_id,
+            0,
+            &final_amount,
+        );
         // --done
 
         // fees second_token
         self.send().direct_esdt(
-                    &self.provider_lp().get(),
-                    &second_token_id,
-                    0,
-                    &match_provider_amount,
-                );
-        // fees first_token 
+            &self.provider_lp().get(),
+            &second_token_id,
+            0,
+            &match_provider_amount,
+        );
+        // fees first_token
         self.send().direct_esdt(
             &self.provider_lp().get(),
             &first_token_id,
@@ -568,7 +594,6 @@ pub trait OrdersModule:
         //delete all completed orders
         //self.clear_orders(&order_ids_to_delete);
         self.clear_orders(&order_ids_to_delete);
-
     }
 
     fn calculate_transfers_instant(
@@ -594,7 +619,7 @@ pub trait OrdersModule:
             let creator_amount = &order.output_amount - &match_provider_amount;
 
             let order_deal = self.rule_of_three(&order.input_amount, &total_paid, &leftover);
-            
+
             let match_provider_deal_amount = self.rule_of_three(
                 &order.deal_config.match_provider_percent.into(),
                 &PERCENT_BASE_POINTS.into(),
@@ -740,10 +765,10 @@ pub trait OrdersModule:
     }
 
     #[view(getPricePerToken)]
-    fn get_price_per_token(&self) -> BigUint{
+    fn get_price_per_token(&self) -> BigUint {
         let order_usdc = BigUint::from(10u64).pow(6) * BigUint::from(81u64); // 81_000_000
         let new_usdc = order_usdc * BigUint::from(10u64).pow(18); //usdc + 18 zecimale
-        let order_ride = BigUint::from(10u64).pow(18) * BigUint::from(60u64); //60 RIDE 
+        let order_ride = BigUint::from(10u64).pow(18) * BigUint::from(60u64); //60 RIDE
         let price_per_token = new_usdc / order_ride; //Price per token
         price_per_token
 

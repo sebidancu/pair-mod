@@ -8,3 +8,4 @@
 .vscode
 # The mxpy output
 output
+/tests

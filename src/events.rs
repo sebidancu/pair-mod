@@ -24,20 +24,27 @@ pub trait EventsModule {
             self.cancel_order_event(&caller, epoch, order_type, order_id)
         }
     }
-    
-    fn emit_completed_orders_event(&self, orders: MultiValueManagedVec<Order<Self::Api>>){
+
+    fn emit_completed_orders_event(&self, orders: MultiValueManagedVec<Order<Self::Api>>) {
         //let orders = self.load_orders(&order_ids_vec);
 
         let epoch = self.blockchain().get_block_epoch();
 
-        for order in orders.iter(){
+        for order in orders.iter() {
             let order_id = order.id;
             let order_type = order.order_type;
             let amount_input = order.input_amount;
             let amount_output = order.output_amount;
             let order_creator = order.creator;
 
-            self.order_completed(epoch, order_type, order_id, amount_input, amount_output, order_creator);
+            self.order_completed(
+                epoch,
+                order_type,
+                order_id,
+                amount_input,
+                amount_output,
+                order_creator,
+            );
         }
     }
 
@@ -116,7 +123,6 @@ pub trait EventsModule {
         #[indexed] amount_output: BigUint,
         #[indexed] order_creator: ManagedAddress,
     );
-
 
     #[event("free_order")]
     fn free_order_event(
