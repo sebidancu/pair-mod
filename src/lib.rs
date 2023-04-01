@@ -104,6 +104,36 @@ pub trait Pair:
         }
     }
 
+    // order@tokenOUT@MinOut@maxFee
+    #[payable("*")]
+    #[endpoint(order)]
+    fn order_endpoint(&self, tokenOut: TokenIdentifier, minOut: BigUint, maxFee: u64) {
+        let provider = self.provider_lp().get();
+        let fee_config = FeeConfig {
+            fee_type: FeeConfigEnum::Percent,
+            fixed_fee: BigUint::zero(),
+            percent_fee: 1_000,
+        };
+
+        let order_input = OrderInputParams {
+            amount: amount.clone(),
+            match_provider: provider,
+            fee_config,
+            deal_config: DealConfig {
+                match_provider_percent: 1_000,
+            },
+        };
+        self.require_global_op_not_ongoing();
+
+        let payment = self.require_valid_sell_payment();
+
+        if amount != BigUint::from(0u64) {
+            self.create_order(payment, order_input, common::OrderType::SellLimit);
+        } else {
+            self.create_order(payment, order_input, common::OrderType::SellMarket);
+        }
+    }
+
     #[endpoint(matchOrders)]
     fn match_orders_endpoint(
         &self,
@@ -149,6 +179,10 @@ pub trait Pair:
 
         self.free_orders(order_ids);
     }
+
+    #[payable("*")]
+    #[endpoint(deposit)]
+    fn deposit(&self) {}
 
     // Comment
     // Why do you need this saved in the storage?
